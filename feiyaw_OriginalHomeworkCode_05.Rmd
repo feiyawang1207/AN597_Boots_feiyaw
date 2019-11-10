@@ -1,0 +1,137 @@
+---
+title: "Feiyaw_OriginalHomeworkCode_5"
+author: "Feiya Wang"
+date: "11/10/2019"
+output: html_document
+---
+***
+
+## Homework 5
+
+***
+Introduction: This is the code for [Homework 05](https://fuzzyatelin.github.io/bioanth-stats/homework-05.html), on week 9 of AN597
+
+#Question 1: Bootstrapping Standard Errors and CIs for Linear Models.
+When we initially discussed the central limit theorem and confidence intervals, we showed how we could use bootstrapping to estimate standard errors and confidence intervals around certain parameter values, like the mean. Using bootstrapping, we could also do the same for estimating standard errors and CIs around regression parameters, such as β coefficients.
+
+>[1] Using the “KamilarAndCooperData.csv” dataset, run a linear regression looking at log(HomeRange_km2) in relation to log(Body_mass_female_mean) and report your β coeffiecients (slope and intercept).
+
+First, we load the files.  
+```{r}
+library (curl)
+#install package curl before this step to load a file from server.
+f <- curl("https://raw.githubusercontent.com/fuzzyatelin/fuzzyatelin.github.io/master/AN597_Fall19/KamilarAndCooperData.csv")
+#load the file in varibale f
+d <- read.csv(f, header = TRUE, sep = ",", stringsAsFactors = FALSE)
+# read file in d as a dataframe.
+head(d)
+```
+
+Then, for the linear regression
+```{r}
+library(ggplot2)
+attach(d)
+
+p1 <- ggplot(data=d, aes(x=log(HomeRange_km2),y=log(Body_mass_female_mean)))
+# build a ggplot object
+p1 <- p1 + geom_point() 
+# make a scatterplot
+p1 <- p1 + geom_smooth(method="lm", fullrange=TRUE)
+# add a regression line 
+m1<-lm(data=d,log(HomeRange_km2)~log(Body_mass_female_mean))
+# make the model of two variable
+t1 <- unlist(m1$coefficients)
+# unlist m to get coeffient
+
+beta0<-round(t1[1],digits = 3)
+#round beta 0 to 3 decimal place
+
+beta0
+#beta 0 coefficient
+
+beta1<-round(t1[2],digits = 3)
+#round beta 1 to 3 decimal place
+
+beta1
+#beta 1 coefficient
+
+soe1<-paste("y=",as.character(beta1),"x",as.character(beta0))
+#make the regression equation as a string
+
+p1<-p1+annotate("text", label = soe1, x = -4, y = 12, size = 5, colour = "black")
+#add it to the ggplot
+
+p1
+
+detach(d)
+#end for attach.
+```
+
+
+>[2] Then, use bootstrapping to sample from your data 1000 times with replacement, each time fitting the same model and calculating the same coefficients. This generates a sampling distribution for each β coefficient.
+
+```{r}
+library(boot)
+#install the package of bootstrap
+attach(d)
+
+statistic <- function(formula, data, indices) {
+    d <- data[indices,]
+    fit <- lm(log(HomeRange_km2)~log(Body_mass_female_mean), data=d)
+    return(coef(fit))
+}
+# function for statistic in boot()
+
+results <- boot(data=d, statistic, R=1000,formula=log(HomeRange_km2)~log(Body_mass_female_mean))
+#use boot() to apply for the results 
+results
+
+p1=plot(results, index=1)
+#beta 0 sample distribution
+
+p2=plot(results, index=2)
+#beta 1 sample distribution
+
+detach(d)
+#end of attach
+```
+
+>1.Estimate the standard error for each of your β coefficients as the standard deviation of the sampling distribution from your bootstrap and determine the 95% CI for each of your β coefficients based on the appropriate quantiles from your sampling distribution.
+
+```{r}
+
+boot.ci(results, type="bca", index=1) 
+#beta 0 95% confidence intervals
+
+boot.ci(results, type="bca", index=2)
+#beta 1 95% confidence intervals
+```
+
+
+>2.How does the former compare to the SE estimated from your entire dataset using the formula for standard error implemented in lm()?
+
+The comparison shows that SE is closed to the standard error.
+
+>3.How does the latter compare to the 95% CI estimated from your entire dataset?
+
+```{r}
+t1 <- coef(summary(m1))
+#summary of m1 we use as the regression model
+t1 <- data.frame(unlist(t1))
+#unlist it
+colnames(t1) <- c("Est", "SE", "t", "p")
+#name the columns.
+ci1 <- confint(m1, level = 0.95)
+#confident interval in m1
+ci1[,]
+#show beta 0, beta1 95% confident interval.
+```
+
+The entire dataset's confidence interval is wider than bootstraping sample's condifence interval. 
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
